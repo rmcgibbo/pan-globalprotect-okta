@@ -9,6 +9,7 @@
    Copyright (C) 2019 Taylor Dean (taylor@makeshift.dev)
    Copyright (C) 2020 Max Lanin (mlanin@evolutiongaming.com)
    Copyright (C) 2019-2020 Tino Lange (coldcoff@yahoo.com)
+   Copyright (C) 2020 Robert T. McGibbon (rmcgibbo@gmail.com)
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -73,6 +74,13 @@ have_gnupg = False
 try:
 	import gnupg
 	have_gnupg = True
+except ImportError:
+	pass
+
+have_crytography = False
+try:
+	import cryptography.fernet
+	have_crytography = True
 except ImportError:
 	pass
 
@@ -887,12 +895,13 @@ def parse_args():
 	parser.add_argument('-l', '--list-gateways', default=False, action='store_true', help='get list of gateways from portal')
 	parser.add_argument('-d', '--gpg-decrypt', action='store_true', help='decrypt configuration file with gpg')
 	parser.add_argument('--gpg-home', default=os.path.expanduser('~/.gnupg'), help='path to gpg home directory')
+	parser.add_argument('--decrypt-fernet', help='Decrypt configuration file with fernet, reading key from stdin', action='store_true')
 	parser.add_argument('-q', '--quiet', default=False, action='store_true', help='disable verbose logging')
 	args = parser.parse_args()
 	return args
 
-def read_conf(fp, gpg_decrypt, gpg_home):
-	# type: (str, bool, str) -> str
+def read_conf(fp, gpg_decrypt, gpg_home, decrypt_fernet):
+	# type: (str, bool, str, boolx) -> str
 	if not os.path.exists(fp):
 		err('config file "{0}" does not exist'.format(fp))
 	cc = ''
@@ -911,6 +920,12 @@ def read_conf(fp, gpg_decrypt, gpg_home):
 		if not dc.ok:
 			err('failed to decrypt config file. status: {0}, error:\n {1}'.format(dc.status, dc.stderr))
 		cc = dc.data
+	if decrypt_fernet:
+		if not have_crytography:
+			err("Requires the package 'cryptograpgy'. pip install cryptography")
+		f = cryptography.fernet.Fernet(sys.stdin.read())
+		cc = f.decrypt(cc)
+
 	return cc
 
 def main():
@@ -921,7 +936,7 @@ def main():
 	quiet = args.quiet
 
 
-	conf_data = read_conf(args.conf_file, args.gpg_decrypt, args.gpg_home)
+	conf_data = read_conf(args.conf_file, args.gpg_decrypt, args.gpg_home, args.decrypt_fernet)
 	conf = Conf.from_data(conf_data)
 
 	if args.list_gateways:
