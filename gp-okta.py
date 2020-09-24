@@ -901,7 +901,7 @@ def parse_args():
 	return args
 
 def read_conf(fp, gpg_decrypt, gpg_home, decrypt_fernet):
-	# type: (str, bool, str, boolx) -> str
+	# type: (str, bool, str, bool) -> str
 	if not os.path.exists(fp):
 		err('config file "{0}" does not exist'.format(fp))
 	cc = ''
